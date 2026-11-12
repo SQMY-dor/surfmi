@@ -21,6 +21,8 @@ import io.github.sqmydor.surfmi.ui.screens.PolicyScreen
 import io.github.sqmydor.surfmi.ui.screens.ProfileEditScreen
 import io.github.sqmydor.surfmi.ui.screens.ProfilesScreen
 import io.github.sqmydor.surfmi.ui.screens.SettingsScreen
+import io.github.sqmydor.surfmi.ui.screens.TemplateEditScreen
+import io.github.sqmydor.surfmi.ui.screens.TemplatesScreen
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -43,6 +45,10 @@ import top.yukonga.miuix.kmp.icon.extended.Timer
 sealed interface SubPage {
     data object AppList : SubPage
     data class EditProfile(val id: String) : SubPage
+    /** [back] is where the template list returns to. */
+    data class Templates(val back: SubPage?) : SubPage
+    /** id null = new template. */
+    data class EditTemplate(val id: String?, val back: SubPage?) : SubPage
 }
 
 /** Per-tab hoisted signals that top-bar actions send to the tab content. */
@@ -77,7 +83,21 @@ fun SurfmiAppUi(
         }
         is SubPage.EditProfile -> {
             BackHandler { sub = null }
-            ProfileEditScreen(profileId = page.id, onBack = { sub = null })
+            ProfileEditScreen(profileId = page.id, onBack = { sub = null }, onOpenTemplates = { sub = SubPage.Templates(page) })
+            return
+        }
+        is SubPage.Templates -> {
+            BackHandler { sub = page.back }
+            TemplatesScreen(onBack = { sub = page.back }, onEdit = { sub = SubPage.EditTemplate(it, page) })
+            return
+        }
+        is SubPage.EditTemplate -> {
+            BackHandler { sub = page.back }
+            TemplateEditScreen(
+                templateId = page.id,
+                onBack = { sub = page.back },
+                onOpen = { sub = SubPage.EditTemplate(it, page.back) },
+            )
             return
         }
         null -> Unit
@@ -140,7 +160,12 @@ fun SurfmiAppUi(
                 onEdit = { sub = SubPage.EditProfile(it) },
             )
             3 -> ActivityScreen(padding, behaviors[3], signals.clearActivity)
-            else -> SettingsScreen(padding, behaviors[4], onOpenAppList = { sub = SubPage.AppList })
+            else -> SettingsScreen(
+                padding,
+                behaviors[4],
+                onOpenAppList = { sub = SubPage.AppList },
+                onOpenTemplates = { sub = SubPage.Templates(null) },
+            )
         }
     }
 }

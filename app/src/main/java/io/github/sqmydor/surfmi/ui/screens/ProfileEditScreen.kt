@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.sqmydor.surfmi.R
 import io.github.sqmydor.surfmi.data.ProfileStore
+import io.github.sqmydor.surfmi.data.TemplateMode
+import io.github.sqmydor.surfmi.data.TemplateStore
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -44,11 +47,13 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
-fun ProfileEditScreen(profileId: String, onBack: () -> Unit) {
+fun ProfileEditScreen(profileId: String, onBack: () -> Unit, onOpenTemplates: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val profile = remember(profileId) { ProfileStore.get(profileId) }
@@ -65,6 +70,33 @@ fun ProfileEditScreen(profileId: String, onBack: () -> Unit) {
     var config by remember { mutableStateOf(ProfileStore.readConfig(profile)) }
     var warnings by remember { mutableStateOf(profile.warnings) }
     var saving by remember { mutableStateOf(false) }
+    val templates by TemplateStore.templates.collectAsState()
+    var templateId by remember { mutableStateOf(profile.templateId) }
+    var templateMode by remember { mutableStateOf(profile.templateMode) }
+    var applying by remember { mutableStateOf(false) }
+
+    fun applyTemplate(id: String, mode: String) {
+        val prevId = templateId
+        val prevMode = templateMode
+        templateId = id
+        templateMode = mode
+        applying = true
+        scope.launch {
+            val current = ProfileStore.get(profile.id) ?: profile
+            runCatching { ProfileStore.setTemplate(current, id, mode) }
+                .onSuccess {
+                    config = ProfileStore.readConfig(it)
+                    warnings = it.warnings
+                    Toast.makeText(context, context.getString(R.string.template_applied, it.groups, it.rules), Toast.LENGTH_SHORT).show()
+                }
+                .onFailure {
+                    templateId = prevId
+                    templateMode = prevMode
+                    Toast.makeText(context, context.getString(R.string.template_apply_failed, it.message ?: ""), Toast.LENGTH_LONG).show()
+                }
+            applying = false
+        }
+    }
     val scroll = MiuixScrollBehavior()
     val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurface)
 
@@ -117,6 +149,48 @@ fun ProfileEditScreen(profileId: String, onBack: () -> Unit) {
                                 },
                             )
                         }
+                    }
+                    SmallTitle(text = stringResource(R.string.template_section))
+                    Card(modifier = Modifier.padding(horizontal = 12.dp)) {
+                        val noneLabel = stringResource(R.string.template_none)
+                        val missing = templateId.isNotBlank() && templates.none { it.id == templateId }
+                        val labels = listOf(noneLabel) + templates.map { it.name } +
+                            if (missing) listOf(stringResource(R.string.template_missing)) else emptyList()
+                        val selected = when {
+                            templateId.isBlank() -> 0
+                            missing -> labels.size - 1
+                            else -> 1 + templates.indexOfFirst { it.id == templateId }
+                        }
+                        OverlayDropdownPreference(
+                            title = stringResource(R.string.template_replace),
+                            summary = stringResource(if (applying) R.string.template_applying else R.string.template_replace_summary),
+                            items = labels,
+                            selectedIndex = selected,
+                            enabled = !applying,
+                            onSelectedIndexChange = { i ->
+                                val id = if (i == 0 || i > templates.size) "" else templates[i - 1].id
+                                if (id != templateId) applyTemplate(id, templateMode)
+                            },
+                        )
+                        OverlayDropdownPreference(
+                            title = stringResource(R.string.template_mode),
+                            items = listOf(
+                                stringResource(R.string.template_mode_replace),
+                                stringResource(R.string.template_mode_append),
+                                stringResource(R.string.template_mode_prepend),
+                            ),
+                            selectedIndex = TemplateMode.ALL.indexOf(templateMode).coerceAtLeast(0),
+                            enabled = !applying && templateId.isNotBlank(),
+                            onSelectedIndexChange = { i ->
+                                val mode = TemplateMode.ALL[i]
+                                if (mode != templateMode) applyTemplate(templateId, mode)
+                            },
+                        )
+                        ArrowPreference(
+                            title = stringResource(R.string.rule_templates),
+                            summary = stringResource(R.string.rule_templates_manage),
+                            onClick = onOpenTemplates,
+                        )
                     }
                     if (warnings.isNotEmpty()) {
                         SmallTitle(text = stringResource(R.string.conversion_warnings))

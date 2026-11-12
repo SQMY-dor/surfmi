@@ -92,9 +92,13 @@ fun ProfilesScreen(
 
     fun activate(p: Profile) {
         ProfileStore.setActive(p)
-        if (Libcore.isRunning()) {
-            scope.launch(Dispatchers.IO) {
-                runCatching { Libcore.reload(ProfileStore.configFile(p).absolutePath) }
+        scope.launch(Dispatchers.IO) {
+            // re-apply the rule template if it changed since the last conversion
+            val current = runCatching { ProfileStore.ensureTemplateApplied(p) }
+                .onFailure { withContext(Dispatchers.Main) { toast(context.getString(R.string.template_apply_failed, it.message ?: "")) } }
+                .getOrDefault(p)
+            if (Libcore.isRunning()) {
+                runCatching { Libcore.reload(ProfileStore.configFile(current).absolutePath) }
                     .onFailure { withContext(Dispatchers.Main) { toast(it.message ?: "reload failed") } }
             }
         }

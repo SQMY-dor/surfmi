@@ -37,6 +37,12 @@ data class Profile(
     val groups: Int = 0,
     val rules: Int = 0,
     val warnings: List<String> = emptyList(),
+    /** Rule template id ("" = keep the subscription's own groups and rules). */
+    val templateId: String = "",
+    /** [TemplateMode]: replace groups + rules, or only append/prepend rules. */
+    val templateMode: String = TemplateMode.REPLACE,
+    /** [TemplateStore.signature] of the template used for config.yaml. */
+    val appliedTemplate: String = "",
 ) {
     val isRemote: Boolean get() = type == "url"
 
@@ -46,6 +52,7 @@ data class Profile(
         .put("upload", upload).put("download", download).put("total", total).put("expire", expire)
         .put("format", format).put("proxies", proxies).put("groups", groups).put("rules", rules)
         .put("warnings", JSONArray(warnings))
+        .put("templateId", templateId).put("templateMode", templateMode).put("appliedTemplate", appliedTemplate)
 
     companion object {
         fun fromJson(o: JSONObject) = Profile(
@@ -65,6 +72,9 @@ data class Profile(
             groups = o.optInt("groups"),
             rules = o.optInt("rules"),
             warnings = o.optJSONArray("warnings")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList(),
+            templateId = o.optString("templateId"),
+            templateMode = o.optString("templateMode", TemplateMode.REPLACE),
+            appliedTemplate = o.optString("appliedTemplate"),
         )
     }
 }
@@ -137,7 +147,7 @@ object ProfileStore {
     }
 
     fun rename(p: Profile, name: String, url: String, updateHours: Int, userAgent: String) =
-        upsert(p.copy(name = name, url = url, updateHours = updateHours, userAgent = userAgent))
+        upsert((get(p.id) ?: p).copy(name = name, url = url, updateHours = updateHours, userAgent = userAgent))
 
     /** Adds a subscription URL, downloading and converting it. */
     suspend fun addRemote(name: String, url: String, updateHours: Int, userAgent: String): Profile {
@@ -171,8 +181,39 @@ object ProfileStore {
         updated
     }
 
+    /**
+     * Changes the rule template of a profile and re-converts its stored
+     * source right away. Throws when the template or conversion fails.
+     */
+    suspend fun setTemplate(p: Profile, templateId: String, mode: String): Profile = withContext(Dispatchers.IO) {
+        val np = p.copy(templateId = templateId, templateMode = mode)
+        val src = sourceFile(p)
+        val updated = if (src.exists()) applyContent(np, src.readBytes(), null) else np.also { upsert(it) }
+        reloadIfActive(updated)
+        updated
+    }
+
+    /**
+     * Re-converts [p] from its stored source when its template (or the
+     * template's text) changed since config.yaml was generated. Called when a
+     * profile is activated or the VPN starts. Returns the current profile.
+     */
+    suspend fun ensureTemplateApplied(p: Profile): Profile = withContext(Dispatchers.IO) {
+        if (TemplateStore.signature(p.templateId, p.templateMode) == p.appliedTemplate) return@withContext p
+        val src = sourceFile(p)
+        if (!src.exists()) return@withContext p
+        applyContent(p, src.readBytes(), null)
+    }
+
     private fun applyContent(p: Profile, content: ByteArray, userinfo: String?): Profile {
-        val result = Core.convert(content, Settings.testUrl.value, fetchRemote = true)
+        val tmpl = TemplateStore.get(p.templateId)
+        val result = Core.convert(
+            content,
+            Settings.testUrl.value,
+            fetchRemote = true,
+            template = tmpl?.content.orEmpty(),
+            mode = p.templateMode,
+        )
         sourceFile(p).writeBytes(content)
         configFile(p).writeText(result.yaml)
         var np = p.copy(
@@ -182,6 +223,7 @@ object ProfileStore {
             groups = result.groups,
             rules = result.rules,
             warnings = result.warnings,
+            appliedTemplate = TemplateStore.signature(p.templateId, p.templateMode),
         )
         if (np.name.isBlank()) np = np.copy(name = "Profile ${state.value.size + 1}")
         if (np.isRemote && np.updateHours == 0 && result.managedInterval > 0) {

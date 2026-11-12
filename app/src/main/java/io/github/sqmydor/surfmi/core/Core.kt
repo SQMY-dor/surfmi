@@ -56,8 +56,19 @@ data class SubUserinfo(val upload: Long, val download: Long, val total: Long, va
 object Core {
     fun version(): String = runCatching { Libcore.version() }.getOrDefault("unavailable")
 
-    fun convert(data: ByteArray, testUrl: String, fetchRemote: Boolean): ConvertResult {
-        val o = JSONObject(Libcore.convertProfile(data, testUrl, fetchRemote))
+    /**
+     * Converts subscription content. [template] is a rule template's text
+     * (empty = keep the subscription's groups and rules) merged with [mode]
+     * ("replace" / "append" / "prepend").
+     */
+    fun convert(
+        data: ByteArray,
+        testUrl: String,
+        fetchRemote: Boolean,
+        template: String = "",
+        mode: String = "replace",
+    ): ConvertResult {
+        val o = JSONObject(Libcore.convertProfileWithTemplate(data, testUrl, fetchRemote, template, mode))
         val managed = o.optJSONObject("managed")
         return ConvertResult(
             format = o.optString("format"),
@@ -70,6 +81,13 @@ object Core {
             managedInterval = managed?.optInt("interval") ?: 0,
         )
     }
+
+    /** Built-in rule templates as JSON: [{id, name, nameEn, description, descriptionEn, content}]. */
+    fun builtinTemplates(): String = runCatching { Libcore.builtinTemplates() }.getOrDefault("[]")
+
+    /** Null when the template parses, otherwise the error message. */
+    fun validateTemplate(template: String): String? =
+        runCatching { Libcore.validateTemplate(template) }.getOrElse { it.message ?: "error" }.ifBlank { null }
 
     fun userinfo(header: String): SubUserinfo {
         val o = JSONObject(Libcore.parseUserinfo(header))

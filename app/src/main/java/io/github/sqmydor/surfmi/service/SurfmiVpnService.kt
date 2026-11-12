@@ -79,7 +79,10 @@ class SurfmiVpnService : VpnService(), Platform {
         startForegroundCompat(buildNotification(getString(R.string.notification_connecting)))
         scope.launch {
             try {
-                val profile = ProfileStore.active() ?: error(getString(R.string.error_no_profile))
+                val profile = ProfileStore.active()?.let { p ->
+                    // pick up rule-template edits made since the last conversion
+                    runCatching { ProfileStore.ensureTemplateApplied(p) }.getOrDefault(p)
+                } ?: error(getString(R.string.error_no_profile))
                 val config = ProfileStore.configFile(profile)
                 if (!config.exists()) error(getString(R.string.error_profile_missing))
 

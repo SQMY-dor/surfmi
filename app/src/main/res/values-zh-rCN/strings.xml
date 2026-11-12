@@ -102,4 +102,37 @@
     <string name="user_agent">默认 User-Agent</string>
     <string name="user_agent_override">User-Agent（留空使用默认）</string>
     <string name="warning_count">%1$d 条提示</string>
+    <string name="rule_templates">规则模板</string>
+    <string name="rule_templates_summary">用本地的策略组和规则替换订阅自带的</string>
+    <string name="rule_templates_manage">新建、导入或编辑模板</string>
+    <string name="rule_templates_hint">模板提供策略组和规则，订阅只提供节点。策略组可以按节点名称自动筛选：Clash 写法用 include-all + filter，Surge 写法用 policy-regex-filter。没有匹配节点的分组会被自动跳过。</string>
+    <string name="template_builtin">内置模板</string>
+    <string name="template_user">我的模板</string>
+    <string name="template_user_empty">还没有模板，点击 + 新建或导入。</string>
+    <string name="template_add">添加模板</string>
+    <string name="template_new">新建</string>
+    <string name="template_new_hint">打开编辑器并填入示例模板。</string>
+    <string name="template_url">模板链接</string>
+    <string name="template_file_hint">选择包含 proxy-groups / rules 或 [Proxy Group] / [Rule] 的 .yaml 或 .conf 文件。</string>
+    <string name="template_imported">已导入 %1$s</string>
+    <string name="template_invalid">模板无效：%1$s</string>
+    <string name="template_saved">模板已保存。使用它的配置会在更新订阅或切换配置时重新生成。</string>
+    <string name="template_deleted">模板已删除</string>
+    <string name="template_used_by">%1$d 个配置在用</string>
+    <string name="template_builtin_readonly">内置模板不可修改，复制一份后再编辑。</string>
+    <string name="template_duplicate">复制并编辑</string>
+    <string name="template_copy_of">%1$s（副本）</string>
+    <string name="template_syntax_help">Clash YAML：proxy-groups（include-all、filter、exclude-filter、exclude-type）、rule-providers、rules。Surge：[Proxy Group] 中使用 include-all-proxies=true / policy-regex-filter=，以及 [Rule]。多个筛选条件可用反引号（`）连接。</string>
+    <string name="template_section">规则组替换</string>
+    <string name="template_replace">规则组替换</string>
+    <string name="template_replace_summary">在更新订阅和切换到此配置时生效</string>
+    <string name="template_applying">正在应用…</string>
+    <string name="template_none">不替换</string>
+    <string name="template_missing">（模板已删除）</string>
+    <string name="template_mode">替换方式</string>
+    <string name="template_mode_replace">替换全部</string>
+    <string name="template_mode_append">仅追加规则</string>
+    <string name="template_mode_prepend">仅前置规则</string>
+    <string name="template_applied">已应用模板：%1$d 个策略组，%2$d 条规则</string>
+    <string name="template_apply_failed">规则模板应用失败：%1$s</string>
 </resources>

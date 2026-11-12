@@ -50,7 +50,12 @@ private val LOG_LEVELS = listOf("debug", "info", "warning", "error", "silent")
 private data class TextEdit(val title: String, val pref: Pref<String>)
 
 @Composable
-fun SettingsScreen(padding: PaddingValues, scrollBehavior: ScrollBehavior, onOpenAppList: () -> Unit) {
+fun SettingsScreen(
+    padding: PaddingValues,
+    scrollBehavior: ScrollBehavior,
+    onOpenAppList: () -> Unit,
+    onOpenTemplates: () -> Unit = {},
+) {
     val context = LocalContext.current
     val stack by Settings.stack.flow.collectAsState()
     val ipv6 by Settings.ipv6.flow.collectAsState()
@@ -134,6 +139,11 @@ fun SettingsScreen(padding: PaddingValues, scrollBehavior: ScrollBehavior, onOpe
                     title = stringResource(R.string.user_agent),
                     summary = ua,
                     onClick = { editing = TextEdit(context.getString(R.string.user_agent), Settings.userAgent) },
+                )
+                ArrowPreference(
+                    title = stringResource(R.string.rule_templates),
+                    summary = stringResource(R.string.rule_templates_summary),
+                    onClick = onOpenTemplates,
                 )
             }
         }

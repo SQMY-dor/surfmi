@@ -103,4 +103,37 @@
     <string name="user_agent">Default User-Agent</string>
     <string name="user_agent_override">User-Agent (empty = default)</string>
     <string name="warning_count">%1$d notes</string>
+    <string name="rule_templates">Rule templates</string>
+    <string name="rule_templates_summary">Local proxy groups and rules that replace a subscription\'s</string>
+    <string name="rule_templates_manage">Create, import or edit templates</string>
+    <string name="rule_templates_hint">A template supplies proxy groups and rules; the subscription only provides proxies. Groups can pick proxies by name with include-all + filter (Clash) or policy-regex-filter (Surge). Groups that match no proxy are skipped.</string>
+    <string name="template_builtin">Built-in</string>
+    <string name="template_user">My templates</string>
+    <string name="template_user_empty">No templates yet. Tap + to create or import one.</string>
+    <string name="template_add">Add template</string>
+    <string name="template_new">New</string>
+    <string name="template_new_hint">Opens the editor with a starter template.</string>
+    <string name="template_url">Template URL</string>
+    <string name="template_file_hint">Pick a .yaml or .conf file containing proxy-groups / rules or [Proxy Group] / [Rule].</string>
+    <string name="template_imported">Imported %1$s</string>
+    <string name="template_invalid">Invalid template: %1$s</string>
+    <string name="template_saved">Template saved. Profiles using it are re-converted on update or when activated.</string>
+    <string name="template_deleted">Template deleted</string>
+    <string name="template_used_by">used by %1$d</string>
+    <string name="template_builtin_readonly">Built-in templates are read-only. Duplicate it to make changes.</string>
+    <string name="template_duplicate">Duplicate to edit</string>
+    <string name="template_copy_of">%1$s (copy)</string>
+    <string name="template_syntax_help">Clash YAML: proxy-groups (include-all, filter, exclude-filter, exclude-type), rule-providers, rules. Surge: [Proxy Group] with include-all-proxies=true / policy-regex-filter=, and [Rule]. Several filters can be joined with a backtick (`).</string>
+    <string name="template_section">Rule group replacement</string>
+    <string name="template_replace">Replace groups with</string>
+    <string name="template_replace_summary">Applied on subscription update and when the profile is activated</string>
+    <string name="template_applying">Applying…</string>
+    <string name="template_none">Don\'t replace</string>
+    <string name="template_missing">(deleted template)</string>
+    <string name="template_mode">Mode</string>
+    <string name="template_mode_replace">Replace all</string>
+    <string name="template_mode_append">Append rules only</string>
+    <string name="template_mode_prepend">Prepend rules only</string>
+    <string name="template_applied">Template applied: %1$d groups, %2$d rules</string>
+    <string name="template_apply_failed">Rule template failed: %1$s</string>
 </resources>

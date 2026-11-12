@@ -23,9 +23,73 @@
   - Base64 或明文节点链接：`ss://`、`vmess://`、`vless://`（含 Reality / gRPC / WS / HTTPUpgrade / XHTTP）、`trojan://`、`hysteria2://`/`hy2://`（含端口跳跃）、`hysteria://`、`tuic://`、`anytls://`、`socks5://`、`http(s)://`；`ssr://` 会跳过并提示
   - sing-box JSON 的 outbounds / endpoints（selector、urltest 转为策略组）
   - 源文件没有规则时自动套用默认模板：局域网与中国大陆直连，其余走代理
+- **规则组替换**：用本地规则模板替换订阅的策略组与规则，只保留节点（见下文）
 - 读取 `Subscription-Userinfo` 显示已用流量和到期时间；支持 `profile-title`、`profile-update-interval` 响应头
 - 订阅按间隔自动更新（WorkManager，每小时检查一次）
 - 支持 `surfmi://install-config?url=…`、`clash://install-config?url=…` 一键导入
+
+## 规则组替换（本地规则模板）
+
+订阅自带的策略组和规则不合心意时，可以在本地用**规则模板**替换，只保留订阅里的节点——效果类似 subconverter 的“外部配置”或 Clash Verge 的“覆写”，但完全在手机上完成。
+
+- 入口：**设置 → 规则模板**（内置模板 + 自建 / 从链接或文件导入 / 编辑 / 删除）；在 **配置 → 编辑 → 信息 → 规则组替换** 中为每个配置选择模板和方式。
+- 方式：**替换全部**（丢弃订阅的策略组与规则，只保留节点）、**仅追加规则**（保留订阅的分组和规则，模板规则插在订阅的 `MATCH` 之前）、**仅前置规则**（模板规则放在最前）。
+- 在更新订阅、切换到该配置以及连接时自动应用；模板内容改动后会在下次切换/连接时重新生成。
+- 内置模板：**简洁**（节点选择 / 自动选择 / 漏网之鱼，国内直连）、**分流**（再加 AI、流媒体、Telegram、谷歌、苹果、微软、广告拦截以及 香港/台湾/日本/新加坡/美国 地区组）、**Surge 语法示例**。规则集以 rule-provider 形式引用 [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) 的 `.mrs` 文件（运行时由 mihomo 下载，App 内不附带）。
+
+模板支持两种写法：
+
+1. **Clash / mihomo YAML**：`proxy-groups`、`rules`、`rule-providers`。策略组用 `include-all: true`（或 `include-all-proxies`）配合 `filter` / `exclude-filter` / `exclude-type` 从订阅节点中按名称筛选；多个正则可用反引号 `` ` `` 连接，正则语法与 mihomo 相同（支持 `(?i)`、前后行断言）。
+2. **Surge 片段**：`[Proxy Group]` + `[Rule]`。`include-all-proxies=true` 引入全部节点，`policy-regex-filter=` 按名称筛选（模板中单独使用 `policy-regex-filter` 即表示从订阅节点中筛选）；`RULE-SET` 的 `.mrs` / `.yaml` 链接会自动识别格式。
+
+筛选在转换时展开为明确的节点列表；**没有匹配到任何节点的分组会被跳过**，并从其它分组中移除，指向它的规则改用模板中的第一个分组（没有分组时为 `DIRECT`）；引用不存在的节点、分组或 rule-provider 会给出提示。
+
+```yaml
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies: [自动选择, 香港, 日本, DIRECT]
+    include-all: true
+    exclude-filter: '剩余|到期|官网'
+  - name: 自动选择
+    type: url-test
+    include-all: true
+    exclude-filter: '剩余|到期|官网'
+  - name: 香港
+    type: url-test
+    include-all: true
+    filter: '(?i)港|🇭🇰|HK|Hong ?Kong'
+  - name: 日本
+    type: url-test
+    include-all: true
+    filter: '(?i)日本|🇯🇵|JP|Japan'
+rule-providers:
+  cn:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs
+    path: ./ruleset/cn.mrs
+    interval: 86400
+rules:
+  - RULE-SET,cn,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
+```
+
+Surge 写法等价示例：
+
+```ini
+[Proxy Group]
+节点选择 = select, 自动选择, 香港, DIRECT, include-all-proxies=true
+自动选择 = url-test, policy-regex-filter=^(?!.*(剩余|到期|官网)).*$
+香港 = url-test, policy-regex-filter=(?i)港|HK|Hong Kong
+
+[Rule]
+RULE-SET,https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs,DIRECT
+GEOIP,CN,DIRECT
+FINAL,节点选择
+```
 
 ## Surge 配置兼容性
 
@@ -119,6 +183,16 @@ GPL-3.0-or-later，见 [LICENSE](LICENSE)。本项目链接了 GPL-3.0 许可的
 - Screens: Home, Policy groups (latency + selection), Profiles (URL / file / paste, update, edit, set active), Activity (requests + logs), Settings. Theme follows the system (light/dark/Monet), languages: English + 简体中文.
 - Built-in conversion: Surge `.conf` and policy lists, Clash/mihomo YAML (pass-through), base64/plain share links (ss, vmess, vless incl. Reality, trojan, hysteria2 with port hopping, hysteria, tuic, anytls, socks5, http; ssr skipped with a warning), sing-box outbounds/endpoints. A default rule template (LAN & mainland China direct, rest proxied) is applied when the source has no rules.
 - `Subscription-Userinfo` usage/expiry, `profile-title`, `profile-update-interval`, periodic auto-update.
+
+### Rule group replacement (local rule templates)
+
+Replace a subscription's proxy groups and rules with a local template and keep only its proxies — like subconverter's external config or Clash Verge's override, done on-device.
+
+- **Settings → Rule templates** lists the built-in templates and your own (create, import from URL or file, edit, delete). Pick one per profile in **Profiles → Edit → Info → Rule group replacement**.
+- Modes: **Replace all** (drop the subscription's groups and rules), **Append rules only** (keep them; template rules go before the subscription's `MATCH`), **Prepend rules only**.
+- Applied on subscription update, when a profile is activated and when connecting; edits to a template are picked up the next time.
+- Built-ins: **Simple** (Proxy / Auto / Final, China direct), **Split** (adds AI, streaming, Telegram, Google, Apple, Microsoft, ad-block and HK/TW/JP/SG/US region groups) and a **Surge syntax example**. Rule sets are referenced as rule-providers pointing at [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) `.mrs` files (downloaded by mihomo at runtime, not bundled).
+- Syntax: Clash/mihomo YAML (`proxy-groups` with `include-all`/`include-all-proxies` + `filter`/`exclude-filter`/`exclude-type`, `rule-providers`, `rules`; join several regexes with a backtick) or a Surge snippet (`[Proxy Group]` with `include-all-proxies=true` / `policy-regex-filter=`, plus `[Rule]`). Filters are expanded into explicit proxy lists at conversion time; groups matching nothing are skipped and rules that used them fall back to the template's first group (or `DIRECT`). See the Chinese section above for a full example.
 
 ### Surge compatibility
 
