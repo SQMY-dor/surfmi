@@ -81,7 +81,7 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = false
+            useLegacyPackaging = true  // compress .so in the APK: much smaller download
         }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

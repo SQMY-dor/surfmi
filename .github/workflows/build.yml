@@ -25,9 +25,9 @@ jobs:
     name: Go core tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: core/go.sum
@@ -55,14 +55,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: core/go.sum
@@ -80,7 +80,7 @@ jobs:
       - name: Build mihomo core (gomobile bind)
         run: ./scripts/build-core.sh
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Version
         id: version
@@ -127,22 +127,56 @@ jobs:
           done
           ls -la dist
 
-      - uses: actions/upload-artifact@v4
+      # Each release APK is uploaded unzipped (archive: false), so the download is a real .apk.
+      - name: Upload arm64-v8a APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/surfmi-${{ env.VERSION_NAME || 'ci' }}-arm64-v8a-release.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload armeabi-v7a APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/surfmi-${{ env.VERSION_NAME || 'ci' }}-armeabi-v7a-release.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload x86_64 APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/surfmi-${{ env.VERSION_NAME || 'ci' }}-x86_64-release.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload universal APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/surfmi-${{ env.VERSION_NAME || 'ci' }}-universal-release.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload debug APKs (zip)
+        uses: actions/upload-artifact@v7
         with:
           name: surfmi-debug-apks
           path: dist/*-debug.apk
+          compression-level: 0
+          retention-days: 14
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: surfmi-release-apks
-          path: dist/*-release.apk
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: libcore-aar
-          path: app/libs/libcore.aar
+      # Rolling pre-release: every push to main replaces the "nightly" release,
+      # so there is always a stable page with plain .apk downloads.
+      - name: Nightly pre-release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete nightly --yes --cleanup-tag || true
+          gh release create nightly dist/*-release.apk \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Nightly (${GITHUB_SHA::7})" \
+            --notes "Built from ${GITHUB_SHA} on main. Most phones: arm64-v8a."
 
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
