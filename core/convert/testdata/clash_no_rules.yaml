@@ -1,0 +1,3 @@
+proxies:
+  - {name: a, type: ss, server: a.example.com, port: 8388, cipher: aes-128-gcm, password: x}
+  - {name: b, type: trojan, server: b.example.com, port: 443, password: y, sni: b.example.com}

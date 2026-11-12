@@ -1,0 +1,27 @@
+# Gradle / Android
+.gradle/
+build/
+/local.properties
+*.iml
+.idea/
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# gomobile output (built by scripts/build-core.sh / CI)
+app/libs/*.aar
+app/libs/*.jar
+
+# Go
+core/bin/
+*.test
+*.out
+
+# OS
+.DS_Store
+Thumbs.db

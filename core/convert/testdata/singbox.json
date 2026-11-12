@@ -1,0 +1,23 @@
+{
+  "log": {"level": "info"},
+  "outbounds": [
+    {"type": "selector", "tag": "select", "outbounds": ["auto", "ss-out", "vless-reality", "direct"], "default": "auto"},
+    {"type": "urltest", "tag": "auto", "outbounds": ["ss-out", "vless-reality", "hy2"], "interval": "5m", "tolerance": 50},
+    {"type": "shadowsocks", "tag": "ss-out", "server": "s1.example.com", "server_port": 8388, "method": "2022-blake3-aes-128-gcm", "password": "AAECAwQFBgcICQoLDA0ODw=="},
+    {"type": "vless", "tag": "vless-reality", "server": "v.example.com", "server_port": 443, "uuid": "0a1b2c3d-0000-4000-8000-123456789abc", "flow": "xtls-rprx-vision",
+     "tls": {"enabled": true, "server_name": "www.apple.com", "utls": {"enabled": true, "fingerprint": "chrome"}, "reality": {"enabled": true, "public_key": "jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0", "short_id": "0123abcd"}}},
+    {"type": "vmess", "tag": "vmess-ws", "server": "w.example.com", "server_port": 443, "uuid": "0a1b2c3d-0000-4000-8000-123456789abc", "security": "auto",
+     "tls": {"enabled": true, "server_name": "w.example.com"}, "transport": {"type": "ws", "path": "/ray", "headers": {"Host": "w.example.com"}}},
+    {"type": "hysteria2", "tag": "hy2", "server": "h.example.com", "server_port": 443, "password": "pw", "up_mbps": 50, "down_mbps": 200, "server_ports": ["20000:30000"],
+     "obfs": {"type": "salamander", "password": "ob"}, "tls": {"enabled": true, "server_name": "h.example.com", "insecure": true}},
+    {"type": "tuic", "tag": "tuic", "server": "t.example.com", "server_port": 443, "uuid": "0a1b2c3d-0000-4000-8000-123456789abc", "password": "pw", "congestion_control": "bbr", "tls": {"enabled": true, "server_name": "t.example.com", "alpn": ["h3"]}},
+    {"type": "direct", "tag": "direct"},
+    {"type": "block", "tag": "block"},
+    {"type": "dns", "tag": "dns-out"}
+  ],
+  "endpoints": [
+    {"type": "wireguard", "tag": "wg-ep", "address": ["10.0.0.2/32", "fd00::2/128"], "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+     "peers": [{"address": "wg.example.com", "port": 51820, "public_key": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=", "allowed_ips": ["0.0.0.0/0"], "reserved": [1, 2, 3]}]}
+  ],
+  "route": {"rules": [{"geoip": "cn", "outbound": "direct"}], "final": "select"}
+}

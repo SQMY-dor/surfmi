@@ -1,0 +1,29 @@
+name: Feature request / 功能建议
+description: Suggest an idea / 提出新功能或改进
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 需求背景
+      description: What are you trying to do? / 你想解决什么问题？
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution / 期望的方案
+    validations:
+      required: true
+  - type: textarea
+    id: surge
+    attributes:
+      label: Related Surge / mihomo documentation / 相关文档
+      description: Links to the public docs of the profile feature, if any (manual.nssurge.com, wiki.metacubex.one)
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Notes
+      options:
+        - label: I understand MITM, scripts and HTTP rewriting are out of scope on Android (see README). / 我已了解 MITM、脚本与重写在 Android 上不在支持范围内。
+          required: false

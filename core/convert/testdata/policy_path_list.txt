@@ -1,0 +1,3 @@
+R-HK-01 = ss, r1.example.com, 8388, encrypt-method=aes-128-gcm, password=r1
+R-JP-02 = trojan, r2.example.com, 443, password=r2, sni=r2.example.com
+Other-03 = ss, r3.example.com, 8388, encrypt-method=aes-128-gcm, password=r3

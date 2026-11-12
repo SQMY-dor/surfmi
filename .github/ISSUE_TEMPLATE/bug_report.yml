@@ -1,0 +1,53 @@
+name: Bug report / 问题反馈
+description: Something does not work as expected / 功能异常
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first. **Never paste real server addresses, passwords, UUIDs or subscription URLs.**
+        提交前请先搜索已有 issue。**请勿粘贴真实的服务器地址、密码、UUID 或订阅链接。**
+  - type: input
+    id: version
+    attributes:
+      label: App version / 应用版本
+      description: Settings → About
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device & Android version / 设备与系统版本
+      placeholder: Xiaomi 14, HyperOS 2 (Android 15)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / 模块
+      options:
+        - Profile import / conversion (Surge, Clash, links, sing-box)
+        - Connection / VPN / TUN
+        - Policy groups / latency
+        - UI
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / 问题描述
+      description: Steps to reproduce, expected and actual behaviour / 复现步骤、期望结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: profile
+    attributes:
+      label: Redacted profile snippet / 脱敏后的配置片段
+      render: ini
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / 日志
+      description: Activity → Logs (set log level to debug in Settings) / 活动 → 日志
+      render: text

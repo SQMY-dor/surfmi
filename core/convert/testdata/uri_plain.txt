@@ -1,0 +1,13 @@
+ss://YWVzLTI1Ni1nY206c3NwYXNz@ss.example.com:8388#SS%20Node
+ss://2022-blake3-aes-128-gcm:AAECAwQFBgcICQoLDA0ODw%3D%3D@ss22.example.com:8388#SS2022
+ss://YWVzLTI1Ni1nY206c3NwYXNz@obfs.example.com:8388/?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dbing.com#SS-Obfs
+ssr://c3NyLmV4YW1wbGUuY29tOjg0NDM6YXV0aF9hZXMxMjhfbWQ1OmFlcy0yNTYtY2ZiOnBsYWluOmNHRnpjdy8
+vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MgV1MiLCJhZGQiOiJ2bS5leGFtcGxlLmNvbSIsInBvcnQiOiI0NDMiLCJpZCI6IjBhMWIyYzNkLTAwMDAtNDAwMC04MDAwLTEyMzQ1Njc4OWFiYyIsImFpZCI6IjAiLCJzY3kiOiJhdXRvIiwibmV0Ijoid3MiLCJ0eXBlIjoibm9uZSIsImhvc3QiOiJ2bS5leGFtcGxlLmNvbSIsInBhdGgiOiIvdiIsInRscyI6InRscyIsInNuaSI6InZtLmV4YW1wbGUuY29tIn0=
+vless://0a1b2c3d-0000-4000-8000-123456789abc@vl.example.com:443?encryption=none&security=reality&sni=www.apple.com&fp=chrome&pbk=jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0&sid=0123abcd&type=tcp&flow=xtls-rprx-vision#VLESS%20Reality
+vless://0a1b2c3d-0000-4000-8000-123456789abc@vg.example.com:443?security=tls&sni=vg.example.com&type=grpc&serviceName=grpcsvc#VLESS-gRPC
+trojan://trpass@tr.example.com:443?sni=tr.example.com&type=ws&path=%2Ftr&host=tr.example.com#Trojan%20WS
+hysteria2://hy2pass@hy.example.com:443/?sni=hy.example.com&obfs=salamander&obfs-password=ob&insecure=1#Hy2
+hy2://pw@hp.example.com:20000-30000/?sni=hp.example.com#Hy2-Hop
+tuic://0a1b2c3d-0000-4000-8000-123456789abc:tuicpw@tu.example.com:443?congestion_control=bbr&alpn=h3&sni=tu.example.com&udp_relay_mode=native#TUIC
+anytls://anypw@at.example.com:443?sni=at.example.com#AnyTLS
+foo://bar

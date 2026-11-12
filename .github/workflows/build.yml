@@ -1,0 +1,149 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.27"
+  NDK_VERSION: "28.2.13676358"
+  ANDROID_PLATFORM: "platforms;android-37.0"
+  BUILD_TOOLS: "build-tools;36.0.0"
+
+jobs:
+  core-test:
+    name: Go core tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core/go.sum
+
+      - name: go vet
+        working-directory: core
+        run: go vet -tags with_gvisor ./...
+
+      - name: go test
+        working-directory: core
+        run: go test -tags with_gvisor -count=1 ./...
+
+      - name: Cross-compile check (android/arm64, cmfa)
+        working-directory: core
+        env:
+          GOOS: android
+          GOARCH: arm64
+          CGO_ENABLED: "0"
+        run: go build -tags cmfa,with_gvisor ./libcore/
+
+  android:
+    name: Android APK
+    needs: core-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core/go.sum
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager --install "${{ env.ANDROID_PLATFORM }}" "${{ env.BUILD_TOOLS }}" "ndk;${{ env.NDK_VERSION }}" > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
+
+      - name: Build mihomo core (gomobile bind)
+        run: ./scripts/build-core.sh
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          fi
+          echo "VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - name: Release keystore (optional)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD"
+              echo "SIGNING_KEY_ALIAS=$KEY_ALIAS"
+              echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Release APKs will be signed with the provided keystore."
+          else
+            echo "::notice::No SIGNING_KEYSTORE_BASE64 secret: release APKs are signed with the debug key."
+          fi
+
+      - name: Unit tests
+        run: ./gradlew --no-configuration-cache :app:testDebugUnitTest
+
+      - name: Assemble debug + release
+        run: ./gradlew --no-configuration-cache :app:assembleDebug :app:assembleRelease
+
+      - name: Collect APKs
+        run: |
+          mkdir -p dist
+          for f in app/build/outputs/apk/debug/*.apk; do
+            cp "$f" "dist/surfmi-${VERSION_NAME:-ci}-$(basename "$f" | sed 's/^app-//')"
+          done
+          for f in app/build/outputs/apk/release/*.apk; do
+            cp "$f" "dist/surfmi-${VERSION_NAME:-ci}-$(basename "$f" | sed 's/^app-//')"
+          done
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: surfmi-debug-apks
+          path: dist/*-debug.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: surfmi-release-apks
+          path: dist/*-release.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libcore-aar
+          path: app/libs/libcore.aar
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*-release.apk
+          generate_release_notes: true
