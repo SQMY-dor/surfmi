@@ -68,6 +68,9 @@ jobs:
           cache-dependency-path: core/go.sum
 
       - uses: android-actions/setup-android@v3
+        with:
+          # default list includes the removed 'tools' package
+          packages: platform-tools
 
       - name: Install SDK packages
         run: |
