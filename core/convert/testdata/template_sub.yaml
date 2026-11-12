@@ -1,0 +1,16 @@
+# subscription with its own groups/rules; the template should replace them
+proxies:
+  - {name: "🇭🇰 香港 01", type: ss, server: hk1.example.com, port: 8388, cipher: aes-128-gcm, password: x}
+  - {name: "HK02 IEPL", type: ss, server: hk2.example.com, port: 8388, cipher: aes-128-gcm, password: x}
+  - {name: "🇯🇵 日本 东京", type: trojan, server: jp.example.com, port: 443, password: x, sni: jp.example.com}
+  - {name: "🇺🇸 美国 洛杉矶", type: ss, server: us.example.com, port: 8388, cipher: aes-128-gcm, password: x}
+  - {name: "剩余流量：100GB", type: ss, server: info.example.com, port: 1, cipher: aes-128-gcm, password: x}
+  - {name: "Russia Moscow", type: vmess, server: ru.example.com, port: 443, uuid: 11111111-2222-3333-4444-555555555555, alterId: 0, cipher: auto}
+proxy-groups:
+  - {name: SubSelect, type: select, proxies: ["🇭🇰 香港 01", "HK02 IEPL", DIRECT]}
+rule-providers:
+  sub_rules: {type: http, behavior: classical, url: "https://sub.example.com/rules.yaml", path: ./ruleset/sub.yaml, interval: 86400}
+rules:
+  - RULE-SET,sub_rules,SubSelect
+  - DOMAIN-SUFFIX,example.org,SubSelect
+  - MATCH,SubSelect

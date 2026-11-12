@@ -1,0 +1,4 @@
+rules:
+  - DOMAIN-SUFFIX,company.example,DIRECT
+  - DOMAIN-KEYWORD,tracker,REJECT
+  - MATCH,DIRECT

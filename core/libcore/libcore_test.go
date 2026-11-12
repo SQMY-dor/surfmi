@@ -146,3 +146,29 @@ func TestLifecycle(t *testing.T) {
 		t.Error(ui)
 	}
 }
+
+func TestConvertProfileWithTemplate(t *testing.T) {
+	var list []map[string]any
+	if err := json.Unmarshal([]byte(BuiltinTemplates()), &list); err != nil || len(list) < 2 {
+		t.Fatalf("BuiltinTemplates: %v %d", err, len(list))
+	}
+	out, err := ConvertProfileWithTemplate([]byte(surgeSample), "", false, "builtin:simple", "replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var res struct {
+		YAML string `json:"yaml"`
+	}
+	if err := json.Unmarshal([]byte(out), &res); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(res.YAML, "节点选择") || strings.Contains(res.YAML, "example.com,Proxy") {
+		t.Errorf("template not applied:\n%s", res.YAML)
+	}
+	if msg := ValidateTemplate("rules:\n  - MATCH,DIRECT\n"); msg != "" {
+		t.Errorf("valid template rejected: %s", msg)
+	}
+	if msg := ValidateTemplate("nonsense"); msg == "" {
+		t.Error("invalid template accepted")
+	}
+}

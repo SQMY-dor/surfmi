@@ -31,6 +31,10 @@ var unsupportedSections = map[string]string{
 func ParseSurge(text string, opt Options) (*Profile, error) {
 	p := newProfile()
 	p.TestURL = DefaultTestURL
+	return parseSurgeInto(p, text, opt)
+}
+
+func parseSurgeInto(p *Profile, text string, opt Options) (*Profile, error) {
 	sections := map[string][]numberedLine{}
 	var order []string
 	cur := "proxy" // bare lists (policy-path content) are proxy lines
@@ -692,18 +696,24 @@ func parseSurgeGroupLine(p *Profile, l numberedLine, opt Options) {
 			g.Set("use", []string{used})
 		}
 	}
-	if parseBool(opts["include-all-proxies"]) {
+	includeAll := parseBool(opts["include-all-proxies"])
+	if p.template && filterRe != "" && opts["policy-path"] == "" {
+		// in a rule template a bare policy-regex-filter selects from the
+		// subscription's proxies
+		includeAll = true
+	}
+	if includeAll {
 		g.Set("include-all-proxies", true)
 	}
 	if filterRe != "" {
-		if _, ok := g.Get("use"); ok || parseBool(opts["include-all-proxies"]) {
+		if _, ok := g.Get("use"); ok || includeAll {
 			g.Set("filter", filterRe)
 		}
 	}
 
 	members = uniqueStrings(members)
 	_, hasUse := g.Get("use")
-	if len(members) == 0 && !hasUse && !parseBool(opts["include-all-proxies"]) {
+	if len(members) == 0 && !hasUse && !includeAll {
 		p.warn("line %d: group %q has no members, DIRECT added", l.n, name)
 		members = []string{"DIRECT"}
 	}
@@ -834,7 +844,7 @@ func truncate(s string, n int) string {
 var ruleTypeMap = map[string]string{
 	"DOMAIN": "DOMAIN", "DOMAIN-SUFFIX": "DOMAIN-SUFFIX", "DOMAIN-KEYWORD": "DOMAIN-KEYWORD",
 	"DOMAIN-WILDCARD": "DOMAIN-WILDCARD", "DOMAIN-REGEX": "DOMAIN-REGEX",
-	"IP-CIDR": "IP-CIDR", "IP-CIDR6": "IP-CIDR6", "GEOIP": "GEOIP", "IP-ASN": "IP-ASN",
+	"IP-CIDR": "IP-CIDR", "IP-CIDR6": "IP-CIDR6", "GEOIP": "GEOIP", "GEOSITE": "GEOSITE", "IP-ASN": "IP-ASN",
 	"SRC-IP": "SRC-IP-CIDR", "SRC-IP-CIDR": "SRC-IP-CIDR",
 	"DEST-PORT": "DST-PORT", "DST-PORT": "DST-PORT", "SRC-PORT": "SRC-PORT", "IN-PORT": "IN-PORT",
 	"PROCESS-NAME": "PROCESS-NAME",
@@ -1057,14 +1067,30 @@ func (p *Profile) ruleProvider(url, behavior string) string {
 		}
 		final = fmt.Sprintf("%s_%d", name, i)
 	}
-	ext := ".list"
+	ext, format := ".list", "text"
 	if behavior == "domain" {
 		ext = ".txt"
+	}
+	lower := strings.ToLower(url)
+	if i := strings.IndexAny(lower, "?#"); i >= 0 {
+		lower = lower[:i]
+	}
+	switch {
+	case strings.HasSuffix(lower, ".mrs"):
+		// mihomo binary rule sets only hold domains or IP ranges
+		ext, format = ".mrs", "mrs"
+		if strings.Contains(lower, "geoip") || strings.Contains(lower, "/ip/") || strings.Contains(lower, "ipcidr") {
+			behavior = "ipcidr"
+		} else {
+			behavior = "domain"
+		}
+	case strings.HasSuffix(lower, ".yaml"), strings.HasSuffix(lower, ".yml"):
+		ext, format = ".yaml", "yaml"
 	}
 	p.RuleProviders.Set(final, NewOMap().
 		Set("type", "http").
 		Set("behavior", behavior).
-		Set("format", "text").
+		Set("format", format).
 		Set("url", url).
 		Set("path", "./ruleset/"+final+ext).
 		Set("interval", 86400))

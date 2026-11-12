@@ -21,7 +21,8 @@ func convertClash(data []byte, opt Options) (*Result, error) {
 	rules, _ := raw["rules"].([]any)
 	proxies, _ := raw["proxies"].([]any)
 	groups, _ := raw["proxy-groups"].([]any)
-	if len(rules) > 0 && !opt.ForceTemplate {
+	hasOverride := opt.Override != nil && strings.TrimSpace(opt.Override.Template) != ""
+	if len(rules) > 0 && !opt.ForceTemplate && !hasOverride {
 		return &Result{
 			Format:   FormatClash,
 			YAML:     string(data),
@@ -41,7 +42,9 @@ func convertClash(data []byte, opt Options) (*Result, error) {
 	if len(p.Proxies) == 0 && p.Providers.Len() == 0 {
 		return nil, fmt.Errorf("no usable proxies found (clash)")
 	}
-	applyTemplate(p)
+	if err := p.finishRules(opt); err != nil {
+		return nil, err
+	}
 	out, err := p.Render()
 	if err != nil {
 		return nil, err
@@ -88,7 +91,38 @@ func clashToProfile(data []byte) (*Profile, error) {
 	if d, ok := raw["dns"].(map[string]any); ok {
 		p.DNS = mapToOMap(d)
 	}
+	if h, ok := raw["hosts"].(map[string]any); ok {
+		for _, k := range sortedKeys(h) {
+			p.Hosts.Set(k, h[k])
+		}
+	}
+	if prov, ok := raw["rule-providers"].(map[string]any); ok {
+		for _, k := range sortedKeys(prov) {
+			if m, ok := prov[k].(map[string]any); ok {
+				p.RuleProviders.Set(k, mapToOMap(m))
+			}
+		}
+	}
+	if list, ok := raw["rules"].([]any); ok {
+		for _, x := range list {
+			if s, ok := x.(string); ok && strings.TrimSpace(s) != "" {
+				p.Rules = append(p.Rules, strings.TrimSpace(s))
+			}
+		}
+	}
+	for _, k := range clashKeptTopKeys {
+		if v, ok := raw[k]; ok {
+			p.Top.Set(k, v)
+		}
+	}
 	return p, nil
+}
+
+// clashKeptTopKeys are behaviour settings carried over from a Clash source
+// when it is re-rendered (ports and controllers stay app-managed).
+var clashKeptTopKeys = []string{
+	"ipv6", "log-level", "unified-delay", "tcp-concurrent", "find-process-mode",
+	"global-client-fingerprint", "sniffer", "geodata-mode", "geox-url",
 }
 
 func sortedKeys(m map[string]any) []string {

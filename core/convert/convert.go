@@ -52,6 +52,10 @@ type Options struct {
 	TestURL string
 	// ForceTemplate replaces the source rules with the default template.
 	ForceTemplate bool
+	// Override applies a local rule template (groups + rules) after
+	// conversion, keeping only the subscription's proxies when its mode is
+	// OverrideReplace. Nil keeps the subscription's own groups and rules.
+	Override *Override
 }
 
 // Managed carries Surge #!MANAGED-CONFIG metadata.
@@ -93,6 +97,9 @@ type Profile struct {
 
 	warnings []string
 	names    map[string]bool
+
+	template      bool            // parsing a rule template, not a profile
+	droppedGroups map[string]bool // template groups skipped as empty
 }
 
 func newProfile() *Profile {
@@ -256,8 +263,8 @@ func Convert(data []byte, opt Options) (*Result, error) {
 	if len(p.Proxies) == 0 && p.Providers.Len() == 0 && len(p.Groups) == 0 {
 		return nil, fmt.Errorf("no usable proxies found (%s)", format)
 	}
-	if len(p.Rules) == 0 || opt.ForceTemplate {
-		applyTemplate(p)
+	if err := p.finishRules(opt); err != nil {
+		return nil, err
 	}
 	out, err := p.Render()
 	if err != nil {
@@ -272,6 +279,24 @@ func Convert(data []byte, opt Options) (*Result, error) {
 		Rules:    len(p.Rules),
 		Managed:  p.Managed,
 	}, nil
+}
+
+// finishRules applies the rule template override, or the built-in default
+// rules when the source has none.
+func (p *Profile) finishRules(opt Options) error {
+	if opt.Override != nil && strings.TrimSpace(opt.Override.Template) != "" {
+		t, err := ParseTemplate(opt.Override.Template)
+		if err != nil {
+			return fmt.Errorf("rule template: %w", err)
+		}
+		p.ApplyOverride(t, opt.Override.Mode)
+		return nil
+	}
+	if len(p.Rules) == 0 || opt.ForceTemplate {
+		applyTemplate(p)
+		p.pruneRuleProviders()
+	}
+	return nil
 }
 
 func nonNil(s []string) []string {

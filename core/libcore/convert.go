@@ -39,7 +39,23 @@ func (f httpFetcher) Fetch(url string) ([]byte, error) {
 // When fetchRemote is true, Surge policy-path lists are downloaded and
 // inlined.
 func ConvertProfile(data []byte, testURL string, fetchRemote bool) (string, error) {
+	return ConvertProfileWithTemplate(data, testURL, fetchRemote, "", "")
+}
+
+// ConvertProfileWithTemplate is ConvertProfile plus a local rule template
+// ("规则组替换"). template is the template text (Surge [Proxy Group]/[Rule]
+// snippet or Clash YAML with proxy-groups/rules/rule-providers), or a
+// built-in id such as "builtin:simple"; empty means no override. mode is
+// "replace" (default: keep only the subscription's proxies), "append" or
+// "prepend" (keep the subscription's groups/rules and add the template's).
+func ConvertProfileWithTemplate(data []byte, testURL string, fetchRemote bool, template, mode string) (string, error) {
 	opt := convert.Options{TestURL: testURL}
+	if template != "" {
+		if c, ok := convert.BuiltinTemplateContent(template); ok {
+			template = c
+		}
+		opt.Override = &convert.Override{Template: template, Mode: convert.ParseOverrideMode(mode)}
+	}
 	if fetchRemote {
 		opt.Fetcher = httpFetcher{client: &http.Client{Timeout: 20 * time.Second}}
 	}
@@ -48,6 +64,22 @@ func ConvertProfile(data []byte, testURL string, fetchRemote bool) (string, erro
 		return "", err
 	}
 	return res.JSON(), nil
+}
+
+// BuiltinTemplates returns the built-in rule templates as a JSON array of
+// {id, name, nameEn, description, descriptionEn, content}.
+func BuiltinTemplates() string { return convert.BuiltinTemplatesJSON() }
+
+// ValidateTemplate parses a rule template and returns "" when it is valid,
+// otherwise the error message. Warnings are not reported here.
+func ValidateTemplate(template string) string {
+	if c, ok := convert.BuiltinTemplateContent(template); ok {
+		template = c
+	}
+	if _, err := convert.ParseTemplate(template); err != nil {
+		return err.Error()
+	}
+	return ""
 }
 
 // DetectFormat returns the detected format name of data.

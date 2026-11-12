@@ -1,0 +1,30 @@
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies: [香港, 新加坡, DIRECT]
+    include-all: true
+    exclude-filter: '剩余|到期'
+  - name: 香港
+    type: url-test
+    include-all: true
+    filter: '(?i)港|(?<![A-Za-z])HK(?![A-Za-z])'
+  - name: 新加坡
+    type: url-test
+    include-all: true
+    filter: '新加坡|SG'
+  - name: 非港
+    type: select
+    include-all-proxies: true
+    filter: '日本`美国`Russia'
+    exclude-type: vmess
+  - name: 流媒体
+    type: select
+    proxies: [新加坡]
+rule-providers:
+  cn: {type: http, behavior: domain, format: mrs, url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs", path: ./ruleset/cn.mrs, interval: 86400}
+rules:
+  - RULE-SET,cn,DIRECT
+  - DOMAIN-SUFFIX,netflix.com,流媒体
+  - DOMAIN-SUFFIX,missing.example,NoSuchGroup
+  - RULE-SET,nope,DIRECT
+  - MATCH,节点选择

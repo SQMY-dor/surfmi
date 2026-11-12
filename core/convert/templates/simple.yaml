@@ -1,0 +1,65 @@
+# Surfmi 内置模板：简洁
+# 只保留订阅中的节点，分组与规则由本模板提供。
+# Built-in template "Simple": keeps only the subscription's proxies.
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies: [自动选择, DIRECT]
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|流量|官网|套餐|重置|过期|expire|traffic|reset'
+  - name: 自动选择
+    type: url-test
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|流量|官网|套餐|重置|过期|expire|traffic|reset'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+  - name: 漏网之鱼
+    type: select
+    proxies: [节点选择, DIRECT]
+
+rule-providers:
+  private_domain:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/private.mrs"
+    path: ./ruleset/private_domain.mrs
+    interval: 86400
+  proxy_domain:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/geolocation-!cn.mrs"
+    path: ./ruleset/proxy_domain.mrs
+    interval: 86400
+  cn_domain:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs"
+    path: ./ruleset/cn_domain.mrs
+    interval: 86400
+  private_ip:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/private.mrs"
+    path: ./ruleset/private_ip.mrs
+    interval: 86400
+  cn_ip:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/cn.mrs"
+    path: ./ruleset/cn_ip.mrs
+    interval: 86400
+
+rules:
+  - RULE-SET,private_domain,DIRECT
+  - RULE-SET,private_ip,DIRECT,no-resolve
+  - RULE-SET,proxy_domain,节点选择
+  - RULE-SET,cn_domain,DIRECT
+  - RULE-SET,cn_ip,DIRECT
+  - MATCH,漏网之鱼

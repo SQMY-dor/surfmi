@@ -3,6 +3,7 @@ module github.com/SQMY-dor/surfmi/core
 go 1.26.0
 
 require (
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/metacubex/mihomo v1.19.34
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/mobile v0.0.0-20261011034528-197770444867
@@ -18,7 +19,6 @@ require (
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/coreos/go-iptables v0.8.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dunglas/httpsfv v1.0.2 // indirect
 	github.com/easytier/easytier/easytier-go v0.0.0-20261111015056-2abb1676b475 // indirect
 	github.com/enfein/mieru/v3 v3.39.0 // indirect
