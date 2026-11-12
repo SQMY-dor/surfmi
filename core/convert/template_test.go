@@ -3,7 +3,10 @@
 package convert
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -288,5 +291,31 @@ func TestMihomoAcceptsTemplateOutput(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestReadmeTemplateExamples keeps the README examples working.
+func TestReadmeTemplateExamples(t *testing.T) {
+	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+	if err != nil {
+		t.Skip("README not found")
+	}
+	blocks := regexp.MustCompile("(?s)```(yaml|ini)\n(.*?)```").FindAllStringSubmatch(string(readme), -1)
+	n := 0
+	for _, b := range blocks {
+		if !strings.Contains(b[2], "节点选择") {
+			continue
+		}
+		n++
+		_, p := mustConvert(t, "template_sub.yaml", Options{Override: &Override{Template: b[2]}})
+		if got := groupMembers(p, "香港"); !reflect.DeepEqual(got, []string{"🇭🇰 香港 01", "HK02 IEPL"}) {
+			t.Errorf("%s example: 香港 = %v", b[1], got)
+		}
+		if p.Rules[len(p.Rules)-1] != "MATCH,节点选择" {
+			t.Errorf("%s example: rules = %v", b[1], p.Rules)
+		}
+	}
+	if n != 2 {
+		t.Errorf("found %d README template examples, want 2", n)
 	}
 }

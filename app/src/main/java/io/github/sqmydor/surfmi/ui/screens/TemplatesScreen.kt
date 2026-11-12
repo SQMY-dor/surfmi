@@ -311,7 +311,7 @@ fun TemplateEditScreen(templateId: String?, onBack: () -> Unit, onOpen: (String)
                             colors = ButtonDefaults.textButtonColorsPrimary(),
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-                                runCatching { TemplateStore.save(null, context.getString(R.string.template_copy_of, existing!!.name), existing.content) }
+                                runCatching { TemplateStore.save(null, context.getString(R.string.template_copy_of, existing.name), existing.content) }
                                     .onSuccess { onOpen(it.id) }
                                     .onFailure { toast(context.getString(R.string.template_invalid, it.message ?: "")) }
                             },
