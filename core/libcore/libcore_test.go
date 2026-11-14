@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/metacubex/mihomo/log"
 )
 
 type fakePlatform struct {
@@ -171,4 +173,30 @@ func TestConvertProfileWithTemplate(t *testing.T) {
 	if msg := ValidateTemplate("nonsense"); msg == "" {
 		t.Error("invalid template accepted")
 	}
+}
+
+// Regression: with mu held (as Start holds it while mihomo loads rule
+// providers), a burst of core log lines must not block. Before the fix the
+// forwarder waited on mu, mihomo's subscriber buffer (200) filled, and every
+// log call in the core blocked: the VPN stayed on "connecting" forever.
+func TestLogBurstWhileLocked(t *testing.T) {
+	SetPlatform(&fakePlatform{})
+	startLogForwarder()
+	defer StopLogForwarder()
+
+	mu.Lock()
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 2000; i++ {
+			log.Warnln("burst %d", i)
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		mu.Unlock()
+		t.Fatal("mihomo log calls blocked while mu was held")
+	}
+	mu.Unlock()
 }

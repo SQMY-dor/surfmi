@@ -259,25 +259,37 @@ func startLogForwarder() {
 	sub := log.Subscribe()
 	f := &logForwarder{stop: make(chan struct{})}
 	logSub = f
+	// Drain mihomo's subscription without ever blocking: lines go into a
+	// bounded queue and are dropped when the host is slow. Blocking here
+	// would stall every log call inside mihomo (and with it the core).
+	queue := make(chan log.Event, 1024)
 	go func() {
 		defer log.UnSubscribe(sub)
 		for {
 			select {
 			case <-f.stop:
+				close(queue)
 				return
 			case ev, ok := <-sub:
 				if !ok {
+					close(queue)
 					return
 				}
 				if ev.LogLevel < log.Level() {
 					continue
 				}
-				mu.Lock()
-				p := platform
-				mu.Unlock()
-				if p != nil {
-					p.OnLog(ev.Type(), strings.TrimSpace(ev.Payload))
+				select {
+				case queue <- ev:
+				default: // host is behind; drop the line
 				}
+			}
+		}
+	}()
+	go func() {
+		for ev := range queue {
+			b, _ := logPlatform.Load().(platformBox)
+			if b.p != nil {
+				b.p.OnLog(ev.Type(), strings.TrimSpace(ev.Payload))
 			}
 		}
 	}()

@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/metacubex/mihomo/component/dialer"
@@ -78,13 +79,21 @@ var (
 	groupOrder []string
 	groupURL   = map[string]string{}
 	logSub     *logForwarder
+
+	// logPlatform mirrors platform for the log forwarder, which must never
+	// take mu: Start holds mu while mihomo loads providers and logs, and
+	// mihomo's log calls block once a subscriber stops draining.
+	logPlatform atomic.Value // platformBox
 )
+
+type platformBox struct{ p Platform }
 
 // SetPlatform registers the host callbacks. Call before Start.
 func SetPlatform(p Platform) {
 	mu.Lock()
 	defer mu.Unlock()
 	platform = p
+	logPlatform.Store(platformBox{p})
 	installHooks()
 }
 
